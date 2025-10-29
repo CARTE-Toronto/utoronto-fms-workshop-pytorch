@@ -12,9 +12,18 @@ permissions:
 jobs:
   docker:
     runs-on: ubuntu-latest
+    env:
+      DOCKER_BUILDKIT: "1"
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Reclaim disk space
+        run: |
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /opt/hostedtoolcache || true
+          sudo rm -rf /usr/share/dotnet || true
+          docker system prune --all --force --volumes || true
 
       - name: Configure image metadata
         run: ./configure --image-tag "${{ github.sha }}"
