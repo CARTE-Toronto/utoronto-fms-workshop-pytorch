@@ -23,7 +23,7 @@ make docker-run                 # launches the image with GPU access and Jupyter
 - `--image-tag 2024.10.31` – tag the build for a specific workshop date
 - `--registry ghcr.io/your-org` – push to a different GHCR namespace
 - `--no-registry` – publish to Docker Hub or keep the image local
-- `--progress plain` – expose verbose BuildKit output in CI logs
+- `--progress plain` – expose verbose BuildKit output during local builds
 
 Run `./configure --help` for the full option list.
 
@@ -48,24 +48,13 @@ Dependency versions live in `pyproject.toml`, while the resolved lock lives in `
 
 The Dockerfile fails the build if `torch.version.cuda` is empty, ensuring CUDA-enabled wheels remain selected.
 
-## Continuous Integration
+## Publishing Images
 
-The repository ships with a GitHub Actions workflow (`.github/workflows/build-and-push.yml`) that:
+CI builds routinely run out of disk when pulling NVIDIA's PyTorch base images on hosted runners. Push releases from a local machine or self-hosted runner instead:
 
-1. Checks out the repository
-2. Runs `./configure --image-tag ${{ github.sha }}` to produce a unique tag per commit
-3. Logs in to GitHub Container Registry using `GITHUB_TOKEN`
-4. Executes `make docker-push`, which builds and pushes the image
-
-Grant the workflow permission to publish packages by adding this snippet (already present) to your workflow file:
-
-```yaml
-permissions:
-  contents: read
-  packages: write
-```
-
-If you prefer a different registry or tagging scheme, update the configure invocation or pass additional flags via the workflow's `env` section.
+1. Run `./configure` with the desired `--image-tag` and registry overrides.
+2. Authenticate to your registry (`docker login ghcr.io` for GitHub Container Registry).
+3. Execute `make docker-push` to build and publish the image.
 
 ## Further Reading
 
