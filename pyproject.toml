@@ -1,0 +1,22 @@
+[project]
+name = "utoronto-fms-workshop-pytorch"
+version = "0.1.0"
+description = "Docker image dependencies for the University of Toronto Foundation Models for Science workshop."
+requires-python = ">=3.10"
+dependencies = [
+    "datasets==3.0.1",
+    "jupyterlab==4.2.5",
+    "matplotlib==3.9.2",
+    "numpy==2.1.2",
+    "pandas==2.2.3",
+    "requests==2.32.3",
+    "scikit-learn==1.5.2",
+    "seaborn==0.13.2",
+    "torch==2.5.1",
+    "tqdm==4.66.5",
+    "transformers==4.45.2",
+]
+
+[tool.uv.pip]
+index-url = "https://download.pytorch.org/whl/cu130"
+extra-index-url = ["https://pypi.org/simple"]
