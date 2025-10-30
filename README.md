@@ -38,6 +38,33 @@ Run `./configure --help` for the full option list.
 
 The Makefile uses BuildKit and respects environment overrides such as `DOCKER`, `UV`, and `DOCKER_PROGRESS`. Consult `make help` to see the annotated target list.
 
+## Faster Builds with Buildx Cache
+
+For iterative development and CI, use the buildx targets that persist and reuse cache layers.
+
+- Registry-backed cache (shared across CI/local):
+
+```bash
+make docker-buildx                   # reads/writes cache at $(IMAGE_REF):buildcache
+make docker-pushx                    # push the image after buildx build
+```
+
+- Local persistent cache (fast local iteration):
+
+```bash
+make docker-buildx-local             # uses .buildx-cache/ in the repo
+```
+
+- Optional: pre-pull base images to avoid slow metadata fetches:
+
+```bash
+make docker-prepull
+```
+
+Tips:
+- Keep changes limited to application code to maximize cache hits; modifying `pyproject.toml` or `uv.lock` invalidates the dependency layer.
+- The `.dockerignore` excludes large/ephemeral paths (e.g., `data/`, `runs/`, `__pycache__/`) to reduce context size and improve cache effectiveness.
+
 ## Updating Dependencies
 
 Dependency versions live in `pyproject.toml`, while the resolved lock lives in `uv.lock`. To add or bump packages:

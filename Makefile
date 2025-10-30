@@ -12,7 +12,8 @@ UV ?= uv
 DOCKER_BUILDKIT ?= 1
 DOCKER_PROGRESS ?=
 
-.PHONY: all help uv-lock uv-sync docker-build docker-run docker-push install clean dist-clean check
+.PHONY: all help uv-lock uv-sync docker-build docker-run docker-push install clean dist-clean check \
+	docker-buildx docker-buildx-local docker-pushx docker-prepull
 
 all: docker-build
 
@@ -37,6 +38,46 @@ docker-run: docker-build ## Run the container with GPU and notebook ports expose
 
 docker-push: docker-build ## Push the container image to the configured registry
 	$(DOCKER) push $(IMAGE_REF)
+
+# Buildx with registry cache (shared across CI/local)
+# Requires: docker buildx create --use (done automatically by first run if needed)
+CACHE_REF ?= $(IMAGE_REF):buildcache
+
+docker-buildx: ## Build with BuildKit and push/pull registry cache
+	$(DOCKER) buildx inspect >/dev/null 2>&1 || $(DOCKER) buildx create --use
+	$(DOCKER) buildx build \
+		--file $(DOCKERFILE) \
+		--tag $(IMAGE_REF) \
+		--cache-from=type=registry,ref=$(CACHE_REF) \
+		--cache-to=type=registry,ref=$(CACHE_REF),mode=max \
+		$(if $(DOCKER_PROGRESS),--progress $(DOCKER_PROGRESS)) \
+		--load \
+		$(DOCKER_CONTEXT)
+
+# Local persistent cache for fast developer iteration
+LOCAL_CACHE_DIR ?= .buildx-cache
+
+docker-buildx-local: ## Build with local cache (fast iteration)
+	$(DOCKER) buildx inspect >/dev/null 2>&1 || $(DOCKER) buildx create --use
+	$(DOCKER) buildx build \
+		--file $(DOCKERFILE) \
+		--tag $(IMAGE_REF) \
+		--cache-from=type=local,src=$(LOCAL_CACHE_DIR) \
+		--cache-to=type=local,dest=$(LOCAL_CACHE_DIR),mode=max \
+		$(if $(DOCKER_PROGRESS),--progress $(DOCKER_PROGRESS)) \
+		--load \
+		$(DOCKER_CONTEXT)
+
+docker-pushx: docker-buildx ## Push image (after buildx build)
+	$(DOCKER) push $(IMAGE_REF)
+
+# Optional: pre-pull and pin base images
+BASE_IMAGE ?= nvcr.io/nvidia/pytorch:25.09-py3
+UV_IMAGE ?= ghcr.io/astral-sh/uv:0.9.5
+
+docker-prepull: ## Pre-pull base images to speed up builds
+	$(DOCKER) pull $(BASE_IMAGE)
+	$(DOCKER) pull $(UV_IMAGE)
 
 install: docker-build ## Export the built image to a tarball
 	mkdir -p $(DIST_DIR)

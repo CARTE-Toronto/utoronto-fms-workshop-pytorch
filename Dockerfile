@@ -38,14 +38,21 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev \
     && chown -R workshop:workshop /opt/venv
 
+# Provide Jupyter server configuration (disable unavailable extensions)
+COPY jupyter_server_config.py /etc/jupyter/jupyter_server_config.py
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
 # Fail fast if the CUDA-enabled torch wheel was selected (no GPU required)
 RUN python - <<'PY'
 import torch
-assert torch.version.cuda, "Expected a CUDA-enabled torch build in the image"
+cuda_ver = torch.version.cuda or ""
+assert cuda_ver.startswith("12.4"), f"Expected CUDA 12.4 torch build, got: {cuda_ver!r}"
 PY
 
 EXPOSE 8888
 
-USER workshop
+USER root
 
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser"]
